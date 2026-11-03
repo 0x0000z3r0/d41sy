@@ -14,19 +14,11 @@ BOOL OverlayStartup(void)
 {
     g_logo = NULL;
 
-    HRSRC resource = FindResourceW(NULL, MAKEINTRESOURCEW(IDR_LOGO), RT_RCDATA);
-    if (resource == NULL)
+    void* bytes = NULL;
+    DWORD size = 0;
+    if (!FetchResource(IDR_LOGO, &bytes, &size) || !GraphicsLoadImage(bytes, size, &g_logo))
     {
-        ReportFail(L"logo.png not found");
-        return TRUE;
-    }
-
-    HGLOBAL loaded = LoadResource(NULL, resource);
-    DWORD size = SizeofResource(NULL, resource);
-    void* bytes = LockResource(loaded);
-    if (loaded == NULL || bytes == NULL || size == 0 || !GraphicsLoadImage(bytes, size, &g_logo))
-    {
-        ReportFail(L"logo.png not found");
+        ReportFail(L"logo.png not found or invalid");
         g_logo = NULL;
         return TRUE;
     }

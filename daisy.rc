@@ -3,3 +3,4 @@
 1 ICON "assets\\icon.ico"
 IDR_LOGO RCDATA "assets\\logo.png"
 IDR_FLOURISH RCDATA "build\\flourish.bin"
+IDR_FERTILIZER RCDATA "assets\\fertilizer.mp4"

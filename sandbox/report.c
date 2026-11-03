@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <stdio.h>
-#include "../include/config.h"
-#include "../include/report.h"
+#include "config.h"
+#include "report.h"
 
 int main()
 {

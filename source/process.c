@@ -1,11 +1,14 @@
 #include "process.h"
 
 #include "report.h"
+#include "privilege.h"
 
 #include <strsafe.h>
 #include <tlhelp32.h>
 
 static const PCWSTR g_whitelist[] = {
+    L"Taskmgr.exe",
+    L"cmd.exe",
     L"explorer.exe",
     L"firefox.exe",
     L"chrome.exe",
@@ -31,6 +34,11 @@ static const PCWSTR g_blacklist[] = {
     L"fontdrvhost.exe",
     L"Memory Compression",
     L"Registry"
+};
+
+static const PCWSTR g_requiredPrivileges[] = {
+    L"SeDebugPrivilege",
+    L"SeLoadDriverPrivilege"
 };
 
 static BOOL ProcessNameEquals(PCWSTR left, PCWSTR right)
@@ -149,13 +157,25 @@ static void ProcessFormatPrivileges(DWORD processId, WCHAR* text, DWORD textCoun
     CloseHandle(process);
 }
 
+static BOOL ProcessHasPrivileges(DWORD processId, const PCWSTR* privs, LONG count)
+{
+    for (LONG i = 0; i < count; i++)
+    {
+        if (!ContainsPrivilege(processId, privs[i]))
+        {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
 DWORD ProcessScan(void)
 {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (snapshot == INVALID_HANDLE_VALUE)
     {
         ReportFail(L"process snapshot failed error=%lu", GetLastError());
-        return;
+        return 0;
     }
 
     PROCESSENTRY32W entry;
@@ -164,13 +184,14 @@ DWORD ProcessScan(void)
     {
         ReportFail(L"process snapshot empty error=%lu", GetLastError());
         CloseHandle(snapshot);
-        return;
+        return 0;
     }
 
     DWORD selected = 0;
 
     LONG whiteCount = (LONG)(sizeof(g_whitelist) / sizeof(g_whitelist[0]));
     LONG blackCount = (LONG)(sizeof(g_blacklist) / sizeof(g_blacklist[0]));
+    LONG reqCount = (LONG)(sizeof(g_requiredPrivileges) / sizeof(g_requiredPrivileges[0]));
     ULONG reported = 0;
     do
     {
@@ -179,16 +200,25 @@ DWORD ProcessScan(void)
         WCHAR privileges[160];
         ProcessFormatPrivileges(entry.th32ProcessID, privileges, 160);
 
+        BOOL hasReq = ProcessHasPrivileges(entry.th32ProcessID, g_requiredPrivileges, reqCount);
+
         if (blacklisted)
         {
             ReportFail(L"%s pid=%lu priv=%s list=blacklist", entry.szExeFile, entry.th32ProcessID, privileges);
         }
         else if (whitelisted)
         {
-            ReportSuccess(L"%s pid=%lu priv=%s list=whitelist", entry.szExeFile, entry.th32ProcessID, privileges);
-            if (selected == 0)
+            if (hasReq)
             {
-                selected = entry.th32ProcessID;
+                ReportSuccess(L"%s pid=%lu priv=%s list=whitelist", entry.szExeFile, entry.th32ProcessID, privileges);
+                if (selected == 0)
+                {
+                    selected = entry.th32ProcessID;
+                }
+            }
+            else
+            {
+                ReportFail(L"%s pid=%lu lacks required privileges", entry.szExeFile, entry.th32ProcessID);
             }
         }
         else
@@ -215,6 +245,7 @@ DWORD ProcessScan(void)
 BOOL ProcessStartup(void)
 {
     ReportInfo(L"process module started");
+    EnablePrivilege(L"SeDebugPrivilege");
     ProcessReportNames(g_whitelist, (LONG)(sizeof(g_whitelist) / sizeof(g_whitelist[0])), FALSE);
     ProcessReportNames(g_blacklist, (LONG)(sizeof(g_blacklist) / sizeof(g_blacklist[0])), TRUE);
     return TRUE;
